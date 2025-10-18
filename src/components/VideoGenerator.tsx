@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Sparkles, Loader2, Download, Share2, RefreshCw } from "lucide-react";
+import { Sparkles, Loader2, Download, Share2, RefreshCw, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getRandomPrompts } from "@/data/viralPrompts";
+import { PromptCategories } from "./PromptCategories";
 
 interface VideoGeneratorProps {
   isPremium?: boolean;
@@ -17,6 +18,8 @@ export const VideoGenerator = ({ isPremium = false }: VideoGeneratorProps) => {
   const [videoUrl, setVideoUrl] = useState("");
   const [displayedPrompts, setDisplayedPrompts] = useState<string[]>([]);
   const [progress, setProgress] = useState("");
+  const [showCategories, setShowCategories] = useState(false);
+  const [generationTime, setGenerationTime] = useState(0);
 
   useEffect(() => {
     refreshPrompts();
@@ -33,11 +36,11 @@ export const VideoGenerator = ({ isPremium = false }: VideoGeneratorProps) => {
     }
 
     setLoading(true);
-    setVideoUrl(""); // Clear previous video
+    setVideoUrl("");
     setProgress("Initializing video generation...");
+    const startTime = Date.now();
     
     try {
-      // Show progress updates
       const progressInterval = setInterval(() => {
         setProgress(prev => {
           const messages = [
@@ -73,9 +76,12 @@ export const VideoGenerator = ({ isPremium = false }: VideoGeneratorProps) => {
       }
 
       if (data.videoUrl) {
+        const endTime = Date.now();
+        const timeTaken = Math.round((endTime - startTime) / 1000);
+        setGenerationTime(timeTaken);
         setVideoUrl(data.videoUrl);
         setProgress("Complete! 🎉");
-        toast.success("✨ Video کامیابی سے بن گئی!");
+        toast.success(`✨ Video generated in ${timeTaken}s!`);
       }
     } catch (error: any) {
       console.error("Video generation error:", error);
@@ -146,32 +152,48 @@ export const VideoGenerator = ({ isPremium = false }: VideoGeneratorProps) => {
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-muted-foreground">Viral Prompts</label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={refreshPrompts}
-                className="h-6 px-2 text-xs"
-              >
-                <RefreshCw className="h-3 w-3 mr-1" />
-                Refresh
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {displayedPrompts.map((p, i) => (
+              <label className="text-xs font-medium text-muted-foreground">Quick Prompts</label>
+              <div className="flex gap-2">
                 <Button
-                  key={i}
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  onClick={() => setPrompt(p)}
-                  className="text-xs border-border hover:border-accent hover:text-accent justify-start h-auto py-2 px-3"
+                  onClick={() => setShowCategories(!showCategories)}
+                  className="h-6 px-2 text-xs"
                 >
-                  <span className="line-clamp-2 text-left">{p}</span>
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  {showCategories ? "Hide" : "Browse"} Categories
                 </Button>
-              ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={refreshPrompts}
+                  className="h-6 px-2 text-xs"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Refresh
+                </Button>
+              </div>
             </div>
+
+            {showCategories ? (
+              <PromptCategories onSelectPrompt={(p) => setPrompt(p)} />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {displayedPrompts.map((p, i) => (
+                  <Button
+                    key={i}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPrompt(p)}
+                    className="text-xs border-border hover:border-accent hover:text-accent justify-start h-auto py-2 px-3 transition-all"
+                  >
+                    <span className="line-clamp-2 text-left">{p}</span>
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
 
           <Button
@@ -211,8 +233,22 @@ export const VideoGenerator = ({ isPremium = false }: VideoGeneratorProps) => {
                 className="w-full rounded-lg shadow-lg"
                 playsInline
               />
-              <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full text-xs text-white">
-                {isPremium ? "HD Quality" : "Free"}
+              <div className="absolute top-2 right-2 flex gap-2">
+                <div className="bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full text-xs text-white flex items-center gap-1">
+                  {isPremium ? (
+                    <>
+                      <Zap className="h-3 w-3 text-accent" />
+                      HD Quality
+                    </>
+                  ) : (
+                    "Free"
+                  )}
+                </div>
+                {generationTime > 0 && (
+                  <div className="bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full text-xs text-white">
+                    {generationTime}s
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex gap-2">

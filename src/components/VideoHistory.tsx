@@ -3,7 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, Share2, Video as VideoIcon, Clock, Sparkles } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Download, Share2, Video as VideoIcon, Clock, Sparkles, Search, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -19,6 +21,9 @@ interface Video {
 export const VideoHistory = () => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterType, setFilterType] = useState<string>("all");
 
   useEffect(() => {
     loadVideos();
@@ -116,9 +121,61 @@ export const VideoHistory = () => {
     );
   }
 
+  const filteredVideos = videos.filter((video) => {
+    const matchesSearch = video.prompt.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = filterStatus === "all" || video.status === filterStatus;
+    const matchesType = filterType === "all" || (filterType === "premium" ? video.is_premium : !video.is_premium);
+    return matchesSearch && matchesStatus && matchesType;
+  });
+
   return (
     <div className="space-y-4">
-      {videos.map((video) => (
+      {/* Search and Filter Bar */}
+      <Card className="p-4 bg-card/50 backdrop-blur-sm border-border">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search videos by prompt..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 bg-muted/50"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-32 bg-muted/50">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-32 bg-muted/50">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="premium">Premium</SelectItem>
+                <SelectItem value="free">Free</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </Card>
+
+      {/* Results Count */}
+      <div className="text-sm text-muted-foreground px-2">
+        Showing {filteredVideos.length} of {videos.length} videos
+      </div>
+
+      {/* Video List */}
+      {filteredVideos.map((video) => (
         <Card
           key={video.id}
           className="p-6 bg-card/50 backdrop-blur-sm border-border shadow-card hover:shadow-glow transition-all duration-300 animate-fade-in"
