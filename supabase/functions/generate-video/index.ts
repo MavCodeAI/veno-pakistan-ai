@@ -58,34 +58,62 @@ serve(async (req) => {
       }
     }
 
-    console.log("Calling Yabes API with prompt:", prompt);
+    console.log("Calling Yabes API V2 with prompt:", prompt);
 
-    // Call Yabes Text-to-Video API
-    const yabesResponse = await fetch("https://yabes-api.pages.dev/api/ai/video/v1", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        prompt: prompt,
-      }),
+    // Step 1: Create video generation task with V2 API
+    const createUrl = `https://yabes-api.pages.dev/api/ai/video/v2?action=create&prompt=${encodeURIComponent(prompt)}`;
+    const createResponse = await fetch(createUrl, {
+      method: "GET",
     });
 
-    if (!yabesResponse.ok) {
-      const errorText = await yabesResponse.text();
-      console.error("Yabes API error:", errorText);
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      console.error("Yabes API V2 create error:", errorText);
       throw new Error(`Video generation failed: ${errorText}`);
     }
 
-    const yabesData = await yabesResponse.json();
-    console.log("Yabes API response:", yabesData);
+    const createData = await createResponse.json();
+    console.log("Yabes API V2 create response:", createData);
 
-    // Extract video URL from response
-    const videoUrl = yabesData.videoUrl || yabesData.url || yabesData.result?.url;
+    const taskId = createData.taskId || createData.task_id || createData.id;
+    
+    if (!taskId) {
+      console.error("No task ID in response:", createData);
+      throw new Error("No task ID in API response");
+    }
+
+    // Step 2: Poll for video completion (max 60 seconds, check every 3 seconds)
+    let videoUrl = null;
+    let attempts = 0;
+    const maxAttempts = 20;
+    
+    while (!videoUrl && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
+      attempts++;
+      
+      console.log(`Checking status, attempt ${attempts}/${maxAttempts}`);
+      
+      const statusUrl = `https://yabes-api.pages.dev/api/ai/video/v2?action=status&taskId=${taskId}`;
+      const statusResponse = await fetch(statusUrl, {
+        method: "GET",
+      });
+
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        console.log("Status response:", statusData);
+        
+        // Check if video is ready
+        if (statusData.status === "completed" || statusData.state === "completed") {
+          videoUrl = statusData.videoUrl || statusData.url || statusData.video_url || statusData.result?.url;
+        } else if (statusData.status === "failed" || statusData.state === "failed") {
+          throw new Error("Video generation failed");
+        }
+        // If still processing, continue polling
+      }
+    }
     
     if (!videoUrl) {
-      console.error("No video URL in response:", yabesData);
-      throw new Error("No video URL in API response");
+      throw new Error("Video generation timed out. Please try again.");
     }
 
     // Save video record to database

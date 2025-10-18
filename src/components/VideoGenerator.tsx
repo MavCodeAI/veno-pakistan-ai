@@ -16,6 +16,7 @@ export const VideoGenerator = ({ isPremium = false }: VideoGeneratorProps) => {
   const [loading, setLoading] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
   const [displayedPrompts, setDisplayedPrompts] = useState<string[]>([]);
+  const [progress, setProgress] = useState("");
 
   useEffect(() => {
     refreshPrompts();
@@ -33,11 +34,29 @@ export const VideoGenerator = ({ isPremium = false }: VideoGeneratorProps) => {
 
     setLoading(true);
     setVideoUrl(""); // Clear previous video
+    setProgress("Initializing video generation...");
     
     try {
+      // Show progress updates
+      const progressInterval = setInterval(() => {
+        setProgress(prev => {
+          const messages = [
+            "Creating your video...",
+            "Processing your prompt...",
+            "Generating scenes...",
+            "Adding effects...",
+            "Almost ready...",
+          ];
+          const currentIndex = messages.indexOf(prev);
+          return messages[(currentIndex + 1) % messages.length];
+        });
+      }, 4000);
+
       const { data, error } = await supabase.functions.invoke("generate-video", {
         body: { prompt, isPremium },
       });
+
+      clearInterval(progressInterval);
 
       if (error) {
         // Handle specific error messages from edge function
@@ -45,6 +64,8 @@ export const VideoGenerator = ({ isPremium = false }: VideoGeneratorProps) => {
           toast.error("آپ کی آج کی مفت videos کی حد ختم ہو گئی ہے۔ کل دوبارہ کوشش کریں!");
         } else if (error.message?.includes("Insufficient wallet balance")) {
           toast.error("Wallet میں balance کافی نہیں ہے۔ براہ کرم top-up کریں۔");
+        } else if (error.message?.includes("timed out")) {
+          toast.error("Video generation took too long. Please try again.");
         } else {
           toast.error(error.message || "Video بنانے میں مسئلہ ہوا");
         }
@@ -53,10 +74,12 @@ export const VideoGenerator = ({ isPremium = false }: VideoGeneratorProps) => {
 
       if (data.videoUrl) {
         setVideoUrl(data.videoUrl);
+        setProgress("Complete! 🎉");
         toast.success("✨ Video کامیابی سے بن گئی!");
       }
     } catch (error: any) {
       console.error("Video generation error:", error);
+      setProgress("");
     } finally {
       setLoading(false);
     }
@@ -66,19 +89,40 @@ export const VideoGenerator = ({ isPremium = false }: VideoGeneratorProps) => {
     if (!videoUrl) return;
     
     try {
-      const response = await fetch(videoUrl);
+      toast.info("Starting download...");
+      
+      // Use a more reliable download method
+      const response = await fetch(videoUrl, {
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch video');
+      }
+      
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
+      a.style.display = 'none';
       a.href = url;
       a.download = `veno-video-${Date.now()}.mp4`;
+      
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      
+      // Cleanup
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+      
       toast.success("Video download شروع ہو گئی!");
     } catch (error) {
-      toast.error("Download میں مسئلہ ہوا، براہ کرم دوبارہ کوشش کریں");
+      console.error('Download error:', error);
+      // Fallback: open in new tab
+      window.open(videoUrl, '_blank');
+      toast.info("Opening video in new tab for download");
     }
   };
 
@@ -147,28 +191,41 @@ export const VideoGenerator = ({ isPremium = false }: VideoGeneratorProps) => {
               </>
             )}
           </Button>
+          
+          {loading && progress && (
+            <div className="text-center text-sm text-muted-foreground animate-pulse">
+              {progress}
+            </div>
+          )}
         </div>
       </Card>
 
       {videoUrl && (
-        <Card className="p-6 bg-card/50 backdrop-blur-sm border-border shadow-card">
+        <Card className="p-6 bg-card/50 backdrop-blur-sm border-border shadow-card animate-fade-in">
           <div className="space-y-4">
-            <video
-              src={videoUrl}
-              controls
-              className="w-full rounded-lg"
-            />
+            <div className="relative">
+              <video
+                src={videoUrl}
+                controls
+                controlsList="nodownload"
+                className="w-full rounded-lg shadow-lg"
+                playsInline
+              />
+              <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full text-xs text-white">
+                {isPremium ? "HD Quality" : "Free"}
+              </div>
+            </div>
             <div className="flex gap-2">
               <Button
                 onClick={handleDownload}
-                className="flex-1 bg-muted hover:bg-muted/80"
+                className="flex-1 bg-gradient-primary hover:opacity-90 text-primary-foreground"
               >
                 <Download className="mr-2 h-4 w-4" />
                 Download
               </Button>
               <Button
                 onClick={handleShare}
-                className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
+                className="flex-1 bg-gradient-accent hover:opacity-90 text-accent-foreground"
               >
                 <Share2 className="mr-2 h-4 w-4" />
                 Share on WhatsApp
