@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { VideoGenerator } from "@/components/VideoGenerator";
 import { DailyLimitCard } from "@/components/DailyLimitCard";
 import { WalletCard } from "@/components/WalletCard";
-import { Sparkles, LogOut, Zap, Video, Shield, User } from "lucide-react";
+import { VideoStats } from "@/components/VideoStats";
+import { VideoHistory } from "@/components/VideoHistory";
+import { Sparkles, LogOut, Zap, Video, Shield, User, History } from "lucide-react";
 import { toast } from "sonner";
 import { useDailyLimit } from "@/hooks/useDailyLimit";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
@@ -118,21 +120,30 @@ const Dashboard = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto space-y-8">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
-            <DailyLimitCard used={dailyUsage} limit={7} loading={dailyLoading} />
-            <WalletCard balance={walletBalance} loading={balanceLoading} />
+          <div className="space-y-4 animate-fade-in">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <DailyLimitCard used={dailyUsage} limit={7} loading={dailyLoading} />
+              <WalletCard balance={walletBalance} loading={balanceLoading} />
+            </div>
+            
+            {/* Video Statistics */}
+            <VideoStats />
           </div>
 
           {/* Tabs */}
           <Tabs defaultValue="free" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-card/50 backdrop-blur-sm">
+            <TabsList className="grid w-full grid-cols-3 bg-card/50 backdrop-blur-sm">
               <TabsTrigger value="free" className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground">
                 <Video className="mr-2 h-4 w-4" />
-                Free Videos
+                Free
               </TabsTrigger>
               <TabsTrigger value="premium" className="data-[state=active]:bg-gradient-accent data-[state=active]:text-accent-foreground">
                 <Zap className="mr-2 h-4 w-4" />
                 Premium
+              </TabsTrigger>
+              <TabsTrigger value="history" className="data-[state=active]:bg-muted">
+                <History className="mr-2 h-4 w-4" />
+                History
               </TabsTrigger>
             </TabsList>
 
@@ -184,6 +195,10 @@ const Dashboard = () => {
                   <VideoGenerator isPremium={true} />
                 )}
               </div>
+            </TabsContent>
+
+            <TabsContent value="history" className="mt-6">
+              <VideoHistory />
             </TabsContent>
           </Tabs>
         </div>

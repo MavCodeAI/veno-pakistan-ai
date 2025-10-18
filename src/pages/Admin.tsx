@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Shield, CheckCircle, XCircle, Clock, User } from "lucide-react";
+import { Shield, CheckCircle, XCircle, Clock, User, Video, FileText } from "lucide-react";
+import { AdminVideoManager } from "@/components/AdminVideoManager";
 
 interface Profile {
   email: string;
@@ -160,159 +161,179 @@ const Admin = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto space-y-6">
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="bg-yellow-500/10 border-yellow-500/30">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-yellow-500" />
-                  Pending
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-yellow-500">
-                  {pendingRequests.length}
-                </div>
-              </CardContent>
-            </Card>
+          {/* Tabs */}
+          <Tabs defaultValue="topups" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 bg-card/50 backdrop-blur-sm">
+              <TabsTrigger value="topups" className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground">
+                <FileText className="mr-2 h-4 w-4" />
+                Top-up Requests
+              </TabsTrigger>
+              <TabsTrigger value="videos" className="data-[state=active]:bg-gradient-accent data-[state=active]:text-accent-foreground">
+                <Video className="mr-2 h-4 w-4" />
+                Video Management
+              </TabsTrigger>
+            </TabsList>
 
-            <Card className="bg-green-500/10 border-green-500/30">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  Approved
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-green-500">
-                  {approvedRequests.length}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-red-500/10 border-red-500/30">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <XCircle className="h-4 w-4 text-red-500" />
-                  Rejected
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-red-500">
-                  {rejectedRequests.length}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Pending Requests */}
-          <Card className="bg-card/50 backdrop-blur-sm border-border shadow-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-yellow-500" />
-                Pending Top-up Requests
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {pendingRequests.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No pending requests
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {pendingRequests.map((request) => (
-                    <div
-                      key={request.id}
-                      className="bg-muted/30 p-4 rounded-lg border border-border space-y-3"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{request.profiles.email}</span>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Phone: {request.phone_number}
-                          </div>
-                          {request.transaction_id && (
-                            <div className="text-sm text-muted-foreground">
-                              Transaction: {request.transaction_id}
-                            </div>
-                          )}
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(request.created_at).toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-accent">
-                            Rs {request.amount}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => handleApprove(request.id)}
-                          disabled={processing === request.id}
-                          className="flex-1 bg-green-500 hover:bg-green-600 text-white"
-                        >
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          Approve
-                        </Button>
-                        <Button
-                          onClick={() => handleReject(request.id)}
-                          disabled={processing === request.id}
-                          variant="outline"
-                          className="flex-1 border-red-500 text-red-500 hover:bg-red-500/10"
-                        >
-                          <XCircle className="mr-2 h-4 w-4" />
-                          Reject
-                        </Button>
-                      </div>
+            <TabsContent value="topups" className="mt-6 space-y-6">
+              {/* Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="bg-yellow-500/10 border-yellow-500/30">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-yellow-500" />
+                      Pending
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-yellow-500">
+                      {pendingRequests.length}
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  </CardContent>
+                </Card>
 
-          {/* Recent History */}
-          <Card className="bg-card/50 backdrop-blur-sm border-border shadow-card">
-            <CardHeader>
-              <CardTitle>Recent History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {requests.slice(0, 10).map((request) => (
-                  <div
-                    key={request.id}
-                    className="flex items-center justify-between py-2 border-b border-border last:border-0"
-                  >
-                    <div>
-                      <div className="font-medium">{request.profiles.email}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {new Date(request.created_at).toLocaleDateString()}
-                      </div>
+                <Card className="bg-green-500/10 border-green-500/30">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      Approved
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-green-500">
+                      {approvedRequests.length}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold">Rs {request.amount}</span>
-                      <Badge
-                        variant={
-                          request.status === "approved"
-                            ? "default"
-                            : request.status === "rejected"
-                            ? "destructive"
-                            : "secondary"
-                        }
-                      >
-                        {request.status}
-                      </Badge>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-red-500/10 border-red-500/30">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <XCircle className="h-4 w-4 text-red-500" />
+                      Rejected
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-red-500">
+                      {rejectedRequests.length}
                     </div>
-                  </div>
-                ))}
+                  </CardContent>
+                </Card>
               </div>
-            </CardContent>
-          </Card>
+
+              {/* Pending Requests */}
+              <Card className="bg-card/50 backdrop-blur-sm border-border shadow-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-yellow-500" />
+                    Pending Top-up Requests
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {pendingRequests.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No pending requests
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {pendingRequests.map((request) => (
+                        <div
+                          key={request.id}
+                          className="bg-muted/30 p-4 rounded-lg border border-border space-y-3"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-medium">{request.profiles.email}</span>
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                Phone: {request.phone_number}
+                              </div>
+                              {request.transaction_id && (
+                                <div className="text-sm text-muted-foreground">
+                                  Transaction: {request.transaction_id}
+                                </div>
+                              )}
+                              <div className="text-xs text-muted-foreground">
+                                {new Date(request.created_at).toLocaleString()}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-accent">
+                                Rs {request.amount}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => handleApprove(request.id)}
+                              disabled={processing === request.id}
+                              className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Approve
+                            </Button>
+                            <Button
+                              onClick={() => handleReject(request.id)}
+                              disabled={processing === request.id}
+                              variant="outline"
+                              className="flex-1 border-red-500 text-red-500 hover:bg-red-500/10"
+                            >
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Reject
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Recent History */}
+              <Card className="bg-card/50 backdrop-blur-sm border-border shadow-card">
+                <CardHeader>
+                  <CardTitle>Recent History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {requests.slice(0, 10).map((request) => (
+                      <div
+                        key={request.id}
+                        className="flex items-center justify-between py-2 border-b border-border last:border-0"
+                      >
+                        <div>
+                          <div className="font-medium">{request.profiles.email}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(request.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold">Rs {request.amount}</span>
+                          <Badge
+                            variant={
+                              request.status === "approved"
+                                ? "default"
+                                : request.status === "rejected"
+                                ? "destructive"
+                                : "secondary"
+                            }
+                          >
+                            {request.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="videos" className="mt-6">
+              <AdminVideoManager />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>
