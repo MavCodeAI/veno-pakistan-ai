@@ -12,66 +12,41 @@ serve(async (req) => {
 
   try {
     const { prompt } = await req.json();
+    console.log("Generating video with prompt:", prompt);
 
-    console.log("Calling Yabes API V2 with prompt:", prompt);
-
-    // Step 1: Create video generation task
-    const createResponse = await fetch("https://yabes-api.pages.dev/api/ai/video", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ prompt }),
+    // Call the video generation API
+    const apiUrl = `https://yabes-api.pages.dev/api/ai/video?prompt=${encodeURIComponent(prompt)}`;
+    console.log("Calling API:", apiUrl);
+    
+    const response = await fetch(apiUrl, {
+      method: "GET",
     });
 
-    if (!createResponse.ok) {
-      const errorText = await createResponse.text();
-      console.error("Yabes API V2 create error:", errorText);
-      throw new Error(`Video generation failed: ${errorText}`);
+    console.log("API Response status:", response.status);
+    const responseText = await response.text();
+    console.log("API Response body:", responseText);
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${responseText}`);
     }
 
-    const createData = await createResponse.json();
-    console.log("Yabes API V2 create response:", createData);
-
-    const taskId = createData.taskId || createData.task_id || createData.id;
-    
-    if (!taskId) {
-      console.error("No task ID in response:", createData);
-      throw new Error("No task ID in API response");
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error("Failed to parse response:", e);
+      throw new Error("Invalid API response format");
     }
 
-    // Step 2: Poll for video completion (max 60 seconds, check every 3 seconds)
-    let videoUrl = null;
-    let attempts = 0;
-    const maxAttempts = 20;
-    
-    while (!videoUrl && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
-      attempts++;
-      
-      console.log(`Checking status, attempt ${attempts}/${maxAttempts}`);
-      
-      const statusResponse = await fetch(`https://yabes-api.pages.dev/api/ai/video/${taskId}`, {
-        method: "GET",
-      });
-
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json();
-        console.log("Status response:", statusData);
-        
-        // Check if video is ready
-        if (statusData.status === "completed" || statusData.state === "completed") {
-          videoUrl = statusData.videoUrl || statusData.url || statusData.video_url || statusData.result?.url;
-        } else if (statusData.status === "failed" || statusData.state === "failed") {
-          throw new Error("Video generation failed");
-        }
-        // If still processing, continue polling
-      }
-    }
+    // Extract video URL from various possible response formats
+    const videoUrl = data.videoUrl || data.url || data.video_url || data.result?.url || data.data?.url;
     
     if (!videoUrl) {
-      throw new Error("Video generation timed out. Please try again.");
+      console.error("No video URL in response:", data);
+      throw new Error("No video URL received from API");
     }
+
+    console.log("Video generated successfully:", videoUrl);
 
     return new Response(
       JSON.stringify({ videoUrl, message: "Video generated successfully" }),
@@ -81,7 +56,7 @@ serve(async (req) => {
       }
     );
   } catch (error: any) {
-    console.error("Error:", error);
+    console.error("Error generating video:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Failed to generate video" }),
       {
