@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,51 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, isPremium } = await req.json();
-
-    // Get user from auth header
-    const authHeader = req.headers.get("Authorization")!;
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error("Unauthorized");
-    }
-
-    // Check wallet balance for premium users
-    if (isPremium) {
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("wallet_balance")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError || !profile || profile.wallet_balance < 20) {
-        throw new Error("Insufficient wallet balance");
-      }
-    }
-
-    // Check daily limit for free users
-    if (!isPremium) {
-      const today = new Date().toISOString().split("T")[0];
-      const { count, error: countError } = await supabase
-        .from("videos")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("is_premium", false)
-        .gte("created_at", `${today}T00:00:00`)
-        .lte("created_at", `${today}T23:59:59`);
-
-      if (countError) throw countError;
-      
-      if (count && count >= 7) {
-        throw new Error("Daily free video limit reached (7/day)");
-      }
-    }
+    const { prompt } = await req.json();
 
     console.log("Calling Yabes API V2 with prompt:", prompt);
 
@@ -114,33 +69,6 @@ serve(async (req) => {
     
     if (!videoUrl) {
       throw new Error("Video generation timed out. Please try again.");
-    }
-
-    // Save video record to database
-    const { error: insertError } = await supabase
-      .from("videos")
-      .insert({
-        user_id: user.id,
-        prompt,
-        video_url: videoUrl,
-        is_premium: isPremium,
-        status: "completed",
-      });
-
-    if (insertError) {
-      console.error("Failed to save video:", insertError);
-    }
-
-    // Deduct wallet balance for premium
-    if (isPremium) {
-      const { error: updateError } = await supabase.rpc("deduct_wallet_balance", {
-        user_id: user.id,
-        amount: 20,
-      });
-
-      if (updateError) {
-        console.error("Failed to deduct balance:", updateError);
-      }
     }
 
     return new Response(

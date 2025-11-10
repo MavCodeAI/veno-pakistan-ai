@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Sparkles, Loader2, Download, Share2, RefreshCw, Zap } from "lucide-react";
+import { Sparkles, Loader2, Download, Share2, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getRandomPrompts } from "@/data/viralPrompts";
 import { PromptCategories } from "./PromptCategories";
@@ -56,22 +56,16 @@ export const VideoGenerator = ({ isPremium = false }: VideoGeneratorProps) => {
       }, 4000);
 
       const { data, error } = await supabase.functions.invoke("generate-video", {
-        body: { prompt, isPremium },
+        body: { 
+          prompt: prompt.trim(),
+          isPremium: false
+        }
       });
 
       clearInterval(progressInterval);
 
       if (error) {
-        // Handle specific error messages from edge function
-        if (error.message?.includes("Daily free video limit reached")) {
-          toast.error("آپ کی آج کی مفت videos کی حد ختم ہو گئی ہے۔ کل دوبارہ کوشش کریں!");
-        } else if (error.message?.includes("Insufficient wallet balance")) {
-          toast.error("Wallet میں balance کافی نہیں ہے۔ براہ کرم top-up کریں۔");
-        } else if (error.message?.includes("timed out")) {
-          toast.error("Video generation took too long. Please try again.");
-        } else {
-          toast.error(error.message || "Video بنانے میں مسئلہ ہوا");
-        }
+        toast.error(error.message || "Failed to generate video");
         throw error;
       }
 
@@ -234,16 +228,6 @@ export const VideoGenerator = ({ isPremium = false }: VideoGeneratorProps) => {
                 playsInline
               />
               <div className="absolute top-2 right-2 flex gap-2">
-                <div className="bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full text-xs text-white flex items-center gap-1">
-                  {isPremium ? (
-                    <>
-                      <Zap className="h-3 w-3 text-accent" />
-                      HD Quality
-                    </>
-                  ) : (
-                    "Free"
-                  )}
-                </div>
                 {generationTime > 0 && (
                   <div className="bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full text-xs text-white">
                     {generationTime}s

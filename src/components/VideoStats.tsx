@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { Video, Zap, TrendingUp, Clock, Award, BarChart3 } from "lucide-react";
+import { Video, TrendingUp, Clock, Award, BarChart3 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 interface VideoStats {
@@ -40,13 +40,9 @@ export const VideoStats = () => {
 
   const loadStats = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { data: allVideos } = await supabase
         .from("videos")
-        .select("*")
-        .eq("user_id", user.id);
+        .select("*");
 
       if (allVideos) {
         const now = new Date();
@@ -55,8 +51,8 @@ export const VideoStats = () => {
 
         setStats({
           total: allVideos.length,
-          premium: allVideos.filter((v: any) => v.is_premium).length,
-          free: allVideos.filter((v: any) => !v.is_premium).length,
+          premium: 0,
+          free: allVideos.length,
           today: allVideos.filter((v: any) => new Date(v.created_at) >= today).length,
           thisWeek: allVideos.filter((v: any) => new Date(v.created_at) >= weekAgo).length,
           completed: allVideos.filter((v: any) => v.status === 'completed').length,
@@ -72,8 +68,8 @@ export const VideoStats = () => {
   if (loading) {
     return (
       <div className="space-y-3">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[...Array(6)].map((_, i) => (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {[...Array(5)].map((_, i) => (
             <Card key={i} className="animate-pulse bg-card/30">
               <CardContent className="p-3">
                 <div className="h-16 bg-muted/50 rounded" />
@@ -89,7 +85,7 @@ export const VideoStats = () => {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 hover:shadow-glow transition-all group">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
@@ -102,23 +98,11 @@ export const VideoStats = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-accent/10 to-accent/5 border-accent/20 hover:shadow-glow transition-all group">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <Zap className="h-3 w-3 group-hover:scale-110 transition-transform" />
-              Premium
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-accent group-hover:scale-110 transition-transform">{stats.premium}</div>
-          </CardContent>
-        </Card>
-
         <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20 hover:shadow-glow transition-all group">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
               <TrendingUp className="h-3 w-3 group-hover:scale-110 transition-transform" />
-              Free
+              Generated
             </CardTitle>
           </CardHeader>
           <CardContent>

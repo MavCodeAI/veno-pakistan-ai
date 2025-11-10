@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Share2, Video as VideoIcon, Clock, Sparkles, Search, Filter } from "lucide-react";
+import { Download, Share2, Video as VideoIcon, Clock, Search, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -23,7 +23,6 @@ export const VideoHistory = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterType, setFilterType] = useState<string>("all");
 
   useEffect(() => {
     loadVideos();
@@ -51,13 +50,9 @@ export const VideoHistory = () => {
 
   const loadVideos = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { data, error } = await supabase
         .from("videos")
         .select("*")
-        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(50);
 
@@ -124,8 +119,7 @@ export const VideoHistory = () => {
   const filteredVideos = videos.filter((video) => {
     const matchesSearch = video.prompt.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === "all" || video.status === filterStatus;
-    const matchesType = filterType === "all" || (filterType === "premium" ? video.is_premium : !video.is_premium);
-    return matchesSearch && matchesStatus && matchesType;
+    return matchesSearch && matchesStatus;
   });
 
   return (
@@ -153,16 +147,6 @@ export const VideoHistory = () => {
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-32 bg-muted/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="premium">Premium</SelectItem>
-                <SelectItem value="free">Free</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -201,21 +185,12 @@ export const VideoHistory = () => {
               )}
             </div>
 
-            {/* Video Info */}
-            <div className="flex-1 space-y-3">
+              <div className="flex-1 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <p className="text-sm font-medium line-clamp-2">{video.prompt}</p>
-                <div className="flex gap-2">
-                  {video.is_premium && (
-                    <Badge className="bg-gradient-accent text-accent-foreground border-0">
-                      <Sparkles className="w-3 h-3 mr-1" />
-                      Premium
-                    </Badge>
-                  )}
-                  <Badge variant={video.status === "completed" ? "default" : "secondary"}>
-                    {video.status}
-                  </Badge>
-                </div>
+                <Badge variant={video.status === "completed" ? "default" : "secondary"}>
+                  {video.status}
+                </Badge>
               </div>
 
               <p className="text-xs text-muted-foreground">
