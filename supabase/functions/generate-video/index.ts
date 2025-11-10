@@ -15,10 +15,13 @@ serve(async (req) => {
 
     console.log("Calling Yabes API V2 with prompt:", prompt);
 
-    // Step 1: Create video generation task with V2 API
-    const createUrl = `https://yabes-api.pages.dev/api/ai/video/v2?action=create&prompt=${encodeURIComponent(prompt)}`;
-    const createResponse = await fetch(createUrl, {
-      method: "GET",
+    // Step 1: Create video generation task
+    const createResponse = await fetch("https://yabes-api.pages.dev/api/ai/video", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prompt }),
     });
 
     if (!createResponse.ok) {
@@ -48,8 +51,7 @@ serve(async (req) => {
       
       console.log(`Checking status, attempt ${attempts}/${maxAttempts}`);
       
-      const statusUrl = `https://yabes-api.pages.dev/api/ai/video/v2?action=status&taskId=${taskId}`;
-      const statusResponse = await fetch(statusUrl, {
+      const statusResponse = await fetch(`https://yabes-api.pages.dev/api/ai/video/${taskId}`, {
         method: "GET",
       });
 
